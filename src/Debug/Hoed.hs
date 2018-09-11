@@ -58,6 +58,7 @@ module Debug.Hoed
   , debug'
   , Config(..)
   , debugRun
+  , convert
     -- * Generate a trace
   , getDebugTrace
     -- * Trace commands

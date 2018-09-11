@@ -163,11 +163,12 @@ instrument Config {..} contents
     (top, name, modules, body) = parseModule contents
     debugModule = "Debug" ++ if useHoedBackend then ".Hoed" else ""
     modules' = unlines $ modules ++
-      ["import qualified " ++ debugModule ++ " as Debug"] ++
+      ["import qualified \"debug\"" ++ debugModule ++ " as Debug"] ++
       ["import qualified GHC.Generics" | generateGenericInstances]
     top' =
       unlines $
-      [ "{-# LANGUAGE TemplateHaskell #-}"
+      [ "{-# LANGUAGE PackageImports #-}"
+      , "{-# LANGUAGE TemplateHaskell #-}"
       , "{-# LANGUAGE PartialTypeSignatures #-}"
       , "{-# LANGUAGE ViewPatterns #-}"
       , "{-# LANGUAGE FlexibleContexts #-}"
