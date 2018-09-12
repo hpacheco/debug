@@ -1,6 +1,6 @@
 -- Generate the output by running
 -- > ghcjs JsHoed.hs -i../src -o ../html/JsHoed
--- You can either install the extended ghcjs-fetch library or compile with the additional -ighcjs-fetch-0.1.0.1/src parameter.
+-- You can either install the ghcjs-fetch library or compile with the additional -ighcjs-fetch/src parameter.
 
 {-# LANGUAGE PackageImports, OverloadedStrings, ScopedTypeVariables #-}
 

@@ -1,3 +1,3 @@
 [submodule "ghcjs-fetch"]
-	path = ghcjs-fetch
+	path = ghcjs/ghcjs-fetch
 	url = https://github.com/hpacheco/ghcjs-fetch
