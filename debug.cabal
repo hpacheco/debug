@@ -28,11 +28,11 @@ data-files:
     html/jshoed.html
     html/jshood.html
     html/JsHoed.jsexe/*.js
-    html/JsHoed.jsexe/*.externs
-    html/JsHoed.jsexe/*.html
-    html/JsHoed.jsexe/*.webapp
-    html/JsHoed.jsexe/*.json
-    html/JsHoed.jsexe/*.stats
+    html/JsHoed.jsexe/all.js.externs
+    html/JsHoed.jsexe/index.html
+    html/JsHoed.jsexe/manifest.webapp
+    html/JsHoed.jsexe/out.frefs.json
+    html/JsHoed.jsexe/out.stats
     html/img/*.png
     html/img/*.gif
 
