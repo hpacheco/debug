@@ -50,7 +50,7 @@
                 case "JsNew":
                     var jslabel = json.jsLabel;
                     var node;
-                    if (!json.jsLabel)
+                    if (!jslabel)
                     {
                         node = {id: json.jsId, label: "?", fulllabel: "?", shape:'circle', color:lighRed, font: {color:darkRed} };
                     }
@@ -93,7 +93,8 @@
                     break;
                     
                 case "JsUpd":
-                    nodes.update([{id: json.jsId, label: trimLabel(json.jsLabel), fulllabel: jslabel, shape:'box', color:lightBlue, font: {color:darkBlue} }]);
+                    var jslabel = json.jsLabel;
+                    nodes.update([{id: json.jsId, label: trimLabel(jslabel), fulllabel: jslabel, shape:'box', color:lightBlue, font: {color:darkBlue} }]);
                     json.jsChildren.forEach(function(child,index) {
                         nodes.add({id: child.jsChildId, label: "?", fulllabel: "?", shape:'circle', color:lightRed, font: {color:darkRed} });
                         switch (child.jsChildType)
