@@ -57,17 +57,30 @@ library
         unordered-containers,
         prettyprinter,
         prettyprinter-compat-ansi-wl-pprint,
-        vector
+        vector,
+        snap,
+        snap-core,
+        template,
+        binary,
+        filepath,
+        temporary,
+        process,
+        Glob,
+        mtl
 
     exposed-modules:
         Debug
         Debug.Hoed
+        Debug.Hoed.Algorithmic
+        Debug.Hoed.Graphical
         Debug.DebugTrace
         Debug.Util
         Debug.Variables
 
     other-modules:
         Paths_debug
+        Debug.Hoed.Util
+        Debug.Hoed.Web
 
 executable debug-pp
   main-is: DebugPP.hs

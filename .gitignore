@@ -5,3 +5,12 @@
 /trace.js
 /hoed.json
 /output/
+*.DS_Store
+*.o
+*.hi
+*.js_hi
+*.js_o
+*.chi
+*.chs.h
+*.dyn_o
+*.dyn_hi
