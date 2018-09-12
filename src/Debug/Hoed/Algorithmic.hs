@@ -3,7 +3,7 @@
 -- | Module that provides an Hoed-style algorithmic debugger.
 module Debug.Hoed.Algorithmic 
     ( module Debug.Hoed
-    , debugRun) where
+    , debugAlgorithmic, copyDebugAlgorithmicFiles) where
 
 import           Debug.Hoed hiding (debugRun)
 import "Hoed"    Debug.Hoed
@@ -16,23 +16,37 @@ import           System.Process
 import           Paths_debug
 import           Control.Monad
 import           Data.Binary
+import qualified Data.Text as T
+import qualified Data.Text.IO as T
     
-debugRun :: IO a -> IO ()
-debugRun io = do
+debugAlgorithmic :: IO a -> IO ()
+debugAlgorithmic io = do
     h <- runO' defaultHoedOptions io
-    debugSession h
+    debugAlgorithmicSession h
  
 -- | Runs the algorithmic debugger given an Hoed trace.
-debugSession :: HoedAnalysis -> IO ()
-debugSession h = do
+debugAlgorithmicSession :: HoedAnalysis -> IO ()
+debugAlgorithmicSession h = do
     withSystemTempDirectory "jshoed" $ \tmpdir -> do
-        copyJsHoedFiles tmpdir
-        encodeFile (tmpdir </> "CompTree") (hoedCompTree h)
+        copyDebugAlgorithmicFiles tmpdir
+        debugAlgorithmicOutput "." tmpdir h
         runServer tmpdir "jshoed.html"
 
-copyJsHoedFiles :: FilePath -> IO ()
-copyJsHoedFiles outpath = do
-    infiles <- jsHoedFiles
+debugAlgorithmicOutput :: FilePath -> FilePath -> HoedAnalysis -> IO ()
+debugAlgorithmicOutput datapath dir h = do
+    -- write trace to binary file
+    encodeFile (dir </> "CompTree") (hoedCompTree h)
+    -- write visualizer to  html file
+    let ctx "datapath" = T.pack $ datapath
+        ctx n = n
+    infn <- getDataFileName "html/jshoed.html"
+    tplt <- readTemplateFile infn
+    let outstr = applyTemplate tplt ctx
+    T.writeFile (dir </> "jshoed.html") outstr
+
+copyDebugAlgorithmicFiles :: FilePath -> IO ()
+copyDebugAlgorithmicFiles outpath = do
+    infiles <- debugAlgorithmicFiles
     inpath <- getDataFileName "html"
     forM_ infiles $ \infile -> do
         let outfile = outpath </> makeRelative inpath infile
@@ -40,13 +54,13 @@ copyJsHoedFiles outpath = do
         system $ "cp " ++ infile ++ " " ++ outfile
 
 -- Images taken from Hoed.
-jsHoedFiles :: IO [FilePath]
-jsHoedFiles = do
+debugAlgorithmicFiles :: IO [FilePath]
+debugAlgorithmicFiles = do
     htmldir <- getDataFileName "html"
-    let html = htmldir </> "jshoed.html"
     js <- glob (htmldir </> "JSHoed.jsexe/*.js")
     png <- glob (htmldir </> "img/*.png")
     let ico = htmldir </> "favicon.ico"
-    return $ html : js ++ png ++ [ico]
+    return $ js ++ png ++ [ico]
+    
 
     

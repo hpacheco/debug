@@ -11,4 +11,4 @@ debug [d|
     
    |]
 
-main = debugRun $ print $ mylength "haskell"
+main = debugGraphical $ print $ mylength "haskell"

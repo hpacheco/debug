@@ -17,4 +17,4 @@ debug [d|
 
    |]
 
-main = debugRun $ print $ oddNat 5
+main = debugAlgorithmic $ print $ oddNat 5

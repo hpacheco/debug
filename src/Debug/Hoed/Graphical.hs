@@ -3,7 +3,7 @@
 -- | Module that provides an Hoed-style algorithmic debugger.
 module Debug.Hoed.Graphical 
     ( module Debug.Hoed
-    , debugRun) where
+    , debugGraphical, debugGraphicalOutputToFile) where
 
 import           Debug.Hoed hiding (debugRun)
 import "Hoed"    Debug.Hoed
@@ -29,16 +29,17 @@ import qualified Data.Vector.Generic as GV
 import           GHC.Word
 import           Web.Browser
 import           System.IO
+import           Control.Concurrent
 
 -- * Graphical debugger invocation
     
-debugRun :: IO a -> IO ()
-debugRun io = do
+debugGraphical :: IO a -> IO ()
+debugGraphical io = do
     h <- runO' defaultHoedOptions io
-    debugSession h
+    debugGraphicalSession h
  
-debugOutput :: HoedAnalysis -> IO T.Text
-debugOutput h = do
+debugGraphicalOutput :: HoedAnalysis -> IO T.Text
+debugGraphicalOutput h = do
     let tr = hoedTrace h
     ti <- traceInfo Silent tr
     let jstr = mkJsTrace tr ti
@@ -50,15 +51,20 @@ debugOutput h = do
     let outstr = applyTemplate tplt ctx
     return outstr
  
+debugGraphicalOutputToFile :: HoedAnalysis -> FilePath -> IO () 
+debugGraphicalOutputToFile h file = do
+    debugGraphicalOutput h >>= T.writeFile file
+
 -- | Runs the graphical debugger given an Hoed trace.
-debugSession :: HoedAnalysis -> IO ()
-debugSession h = do
-    outstr <- debugOutput h
+debugGraphicalSession :: HoedAnalysis -> IO ()
+debugGraphicalSession h = do
+    outstr <- debugGraphicalOutput h
     withSystemTempFile "jshood.html" $ \tmpfile hdl -> do
         T.hPutStr hdl outstr
         hFlush hdl
         hClose hdl
         openBrowser tmpfile
+        threadDelay (10^6) -- to prevent thee file to be deleted too early
         return ()
 
 -- * Graphical debugger @JsEvent@s.

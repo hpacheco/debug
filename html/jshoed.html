@@ -27,9 +27,9 @@
 
     </style>
 
-    <script language="javascript" src="./JsHoed.jsexe/rts.js"></script>
-    <script language="javascript" src="./JsHoed.jsexe/lib.js"></script>
-    <script language="javascript" src="./JsHoed.jsexe/out.js"></script>
+    <script language="javascript" src="${datapath}/JsHoed.jsexe/rts.js"></script>
+    <script language="javascript" src="${datapath}/JsHoed.jsexe/lib.js"></script>
+    <script language="javascript" src="${datapath}/JsHoed.jsexe/out.js"></script>
     
     <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.css" rel="stylesheet" type="text/css" />
@@ -41,11 +41,11 @@
         var edgesArray = [];
         var network = null;
         var layoutMethod = "directed";
-        var faultyImg = "./img/faulty.png";
-        var rightImg = "./img/right.png";
-        var wrongImg = "./img/wrong.png";
-        var unassessedImg = "./img/unassessed.png";
-        var nextImg = "./img/next.png";
+        var faultyImg = "${datapath}/img/faulty.png";
+        var rightImg = "${datapath}/img/right.png";
+        var wrongImg = "${datapath}/img/wrong.png";
+        var unassessedImg = "${datapath}/img/unassessed.png";
+        var nextImg = "${datapath}/img/next.png";
         var foundFault = false;
         
         var lightYellow = '#F9EA68';
@@ -198,9 +198,9 @@
 <br/>
 <center>
 <span>Current Node:</span>
-<button id="right" style="margin-right: 1em;">right <img src="./img/right.png" height="20"></button>
-<button id="wrong" style="margin-right: 1em;">wrong <img src="./img/wrong.png" height="20"></button>
-<button id="next"  style="margin-right: 1em;">next  <img src="./img/next.png"  height="20"></button>
+<button id="right" style="margin-right: 1em;">right <img src="${datapath}/img/right.png" height="20"></button>
+<button id="wrong" style="margin-right: 1em;">wrong <img src="${datapath}/img/wrong.png" height="20"></button>
+<button id="next"  style="margin-right: 1em;">next  <img src="${datapath}/img/next.png"  height="20"></button>
 </center>
 
 <center>
@@ -231,7 +231,7 @@
     initDraw();
 </script>
     
-<script language="javascript" src="./JsHoed.jsexe/runmain.js"></script>
+<script language="javascript" src="${datapath}/JsHoed.jsexe/runmain.js"></script>
 
 <script>
     postDraw();
