@@ -3,7 +3,7 @@
 -- | Module that provides an Hoed-style algorithmic debugger.
 module Debug.Hoed.Algorithmic 
     ( module Debug.Hoed
-    , debugAlgorithmic, copyDebugAlgorithmicFiles) where
+    , debugAlgorithmic, debugAlgorithmicOutput, copyDebugAlgorithmicFiles) where
 
 import           Debug.Hoed hiding (debugRun)
 import "Hoed"    Debug.Hoed

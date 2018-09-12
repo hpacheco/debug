@@ -51,8 +51,8 @@ debugGraphicalOutput h = do
     let outstr = applyTemplate tplt ctx
     return outstr
  
-debugGraphicalOutputToFile :: HoedAnalysis -> FilePath -> IO () 
-debugGraphicalOutputToFile h file = do
+debugGraphicalOutputToFile :: FilePath -> HoedAnalysis -> IO () 
+debugGraphicalOutputToFile file h = do
     debugGraphicalOutput h >>= T.writeFile file
 
 -- | Runs the graphical debugger given an Hoed trace.
