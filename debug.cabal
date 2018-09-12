@@ -24,6 +24,17 @@ data-files:
     html/debug.css
     html/debug.html
     html/debug.js
+    html/favicon.ico
+    html/jshoed.html
+    html/jshood.html
+    html/JsHoed.jsexe/*.js
+    html/JsHoed.jsexe/*.externs
+    html/JsHoed.jsexe/*.html
+    html/JsHoed.jsexe/*.webapp
+    html/JsHoed.jsexe/*.json
+    html/JsHoed.jsexe/*.stats
+    html/img/*.png
+    html/img/*.gif
 
 extra-source-files:
     test/ref/hoed.json
