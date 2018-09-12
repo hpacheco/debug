@@ -21,7 +21,7 @@ import           GHCJS.Types
 import           GHCJS.Marshal 
 import           GHCJS.Foreign.Callback
 import           GHCJS.DOM.Types 
-import           GHCJS.Fetch
+import           GHCJS.Fetch.ByteString
 
 -- | main function for the GHCJS executable.
 main = do
