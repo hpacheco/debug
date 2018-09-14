@@ -41,6 +41,32 @@
     var lightYellow = '#F9EA68';
     var darkYellow = '#908204';
     
+    function nodesAdd(node) {
+        var oldnode = nodes.get(node.id);
+        if (oldnode)
+        {
+        }
+        else
+        {
+            nodes.add(node);
+        }
+    }
+    function removeNodeOrEdge(from,to,eid) {
+        edges.remove(eid);
+        if (getEdgesToNodeNotFrom(from,to).length > 0)
+        {
+        }
+        else 
+        {
+            nodes.remove({id:to});
+        }
+    }
+    function getEdgesToNodeNotFrom(from,to) {
+      return edges.get().filter(function (edge) {
+        return edge.to === to && edge.from != from;
+      });
+    }
+    
     function stepForward() {
         if (nevent < nevents)
         {
@@ -67,7 +93,8 @@
                         nodes.update([node]);
                     }
                     json.jsChildren.forEach(function(child,index) {
-                        nodes.add({id: child.jsChildId, label: "?", fulllabel: "?", shape:'circle', color:lightRed, font: {color:darkRed} });
+                        var eid = child.jsChildId + "+" + json.jsId;
+                        nodesAdd({id: child.jsChildId, label: "?", fulllabel: "?", shape:'circle', color:lightRed, font: {color:darkRed} });
                         switch (child.jsChildType)
                         {
                             case "JsInput":
@@ -75,6 +102,9 @@
                                 break;
                             case "JsOutput":
                                 edges.add({id: eid, to: child.jsChildId, from:json.jsId, dashes:true, label:"=",  font: {color:darkBlue}, color:{color:darkBlue, opacity:0.7}});
+                                break;
+                            case "JsDataType":
+                                edges.add({id: eid, to: child.jsChildId, from:json.jsId, dashes:true, label:"",  font: {color:darkBlue}, color:{color:darkBlue, opacity:0.7}, arrows: {from: {enabled:false}, to: {enabled:true}} });
                                 break;
                         }
                     });
@@ -96,7 +126,7 @@
                     var jslabel = json.jsLabel;
                     nodes.update([{id: json.jsId, label: trimLabel(jslabel), fulllabel: jslabel, shape:'box', color:lightBlue, font: {color:darkBlue} }]);
                     json.jsChildren.forEach(function(child,index) {
-                        nodes.add({id: child.jsChildId, label: "?", fulllabel: "?", shape:'circle', color:lightRed, font: {color:darkRed} });
+                        nodesAdd({id: child.jsChildId, label: "?", fulllabel: "?", shape:'circle', color:lightRed, font: {color:darkRed} });
                         switch (child.jsChildType)
                         {
                             case "JsInput":
@@ -104,6 +134,9 @@
                                 break;
                             case "JsOutput":
                                 edges.add({id: eid, to: child.jsChildId, from:json.jsId, dashes:true, label:"=",  font: {color:darkBlue}, color:{color:darkBlue, opacity:0.7}});
+                                break;
+                            case "JsDataType":
+                                edges.add({id: eid, to: child.jsChildId, from:json.jsId, dashes:true, label:"",  font: {color:darkBlue}, color:{color:darkBlue, opacity:0.7}, arrows: {from: {enabled:false}, to: {enabled:true}} });
                                 break;
                         }
                     });
@@ -142,7 +175,7 @@
     function stepBackward () {
         if (nevent > 0)
         {
-            nevent--; //check this syntax
+            nevent--;
             var json = JSON.parse(events[nevent]);
             switch (json.jsType)
             {
@@ -159,31 +192,39 @@
                     }
                     else
                     {
-                        nodes.update([{id: json.jsId, label: "?", fulllabel: "?", color:lightRed, font: {color:darkRed} }]);
+                        nodes.update([{id: json.jsId, label: "?", fulllabel: "?", shape:'circle', color:lightRed, font: {color:darkRed} }]);
                     }
                     json.jsChildren.forEach(function(child) {
+                        var eid = child.jsChildId + "+" + json.jsId;
                         switch (child.jsChildType)
                         {
                             case "JsInput": 
-                                nodes.remove({id:child.jsChildId});
+                                removeNodeOrEdge(json.jsId,child.jsChildId,eid);
                                 break;
                             case "JsOutput": 
-                                nodes.remove({id:child.jsChildId});
+                                removeNodeOrEdge(json.jsId,child.jsChildId,eid);
+                                break;
+                            case "JsDataType": 
+                                removeNodeOrEdge(json.jsId,child.jsChildId,eid);
                                 break;
                         }
                     });
                     break;
                     
                 case "JsUpd":
-                    nodes.update([{id: json.jsId, label: "?", fulllabel: "?", color:lightRed, font: {color:darkRed} }]);
+                    nodes.update([{id: json.jsId, label: "?", fulllabel: "?", shape:'circle', color:lightRed, font: {color:darkRed} }]);
                     json.jsChildren.forEach(function(child) {
+                        var eid = child.jsChildId + "+" + json.jsId;
                         switch (child.jsChildType)
                         {
                             case "JsInput": 
-                                nodes.remove({id:child.jsChildId});
+                                removeNodeOrEdge(json.jsId,child.jsChildId,eid);
                                 break;
                             case "JsOutput": 
-                                nodes.remove({id:child.jsChildId});
+                                removeNodeOrEdge(json.jsId,child.jsChildId,eid);
+                                break;
+                            case "JsDataType": 
+                                removeNodeOrEdge(json.jsId,child.jsChildId,eid);
                                 break;
                         }
                     });

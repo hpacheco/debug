@@ -3,7 +3,7 @@
 -- | Module that provides an Hoed-style algorithmic debugger.
 module Debug.Hoed.Graphical 
     ( module Debug.Hoed
-    , debugGraphical, debugGraphicalOutputToFile) where
+    , debugGraphical, debugGraphicalOutputToFile,mkJsTrace) where
 
 import           Debug.Hoed hiding (debugRun)
 import "Hoed"    Debug.Hoed
@@ -18,6 +18,8 @@ import qualified Data.Text.IO as T
 import           Data.Aeson as Aeson
 import           Data.Map (Map(..))
 import qualified Data.Map as Map
+import           Data.HashMap.Strict (HashMap(..))
+import qualified Data.HashMap.Strict as HashMap
 import           Data.IntMap (IntMap(..))
 import qualified Data.IntMap as IMap
 import           Data.IntSet (IntSet(..))
@@ -30,6 +32,9 @@ import           GHC.Word
 import           Web.Browser
 import           System.IO
 import           Control.Concurrent
+import           Control.Monad
+
+import Debug.Trace
 
 -- * Graphical debugger invocation
     
@@ -64,13 +69,26 @@ debugGraphicalSession h = do
         hFlush hdl
         hClose hdl
         openBrowser tmpfile
-        threadDelay (10^6) -- to prevent thee file to be deleted too early
+        forever $ threadDelay (10^6) -- to prevent thee file to be deleted too early
         return ()
 
 -- * Graphical debugger @JsEvent@s.
 -- An event represents an animation step.
 
+--data JsId = JsFun { jsNodeId :: Int }
+--          | JsCon { jsNodeId :: Int, jsConId :: Int  }
+--  deriving (Generic,Show)
+--
+--prettyJsId :: JsId -> String
+--prettyJsId (JsFun uid) = "n"++show uid
+--prettyJsId (JsCon uid cid) = "c"++show cid
+--
+--instance ToJSON JsId where
+--    toJSON = String . T.pack . prettyJsId
+
 type JsId = Int
+
+jsNodeId = id
 
 type JsLabel = String
 
@@ -80,7 +98,7 @@ data JsParent = JsParent { jsParentId :: JsId, jsParentType :: JsEdgeType }
 instance ToJSON JsParent where
     toEncoding = genericToEncoding defaultOptions
 
-data JsEdgeType = JsInput | JsOutput | JsCall
+data JsEdgeType = JsInput | JsOutput | JsCall | JsDataType
   deriving (Generic,Show)
 
 instance ToJSON JsEdgeType where
@@ -120,7 +138,8 @@ type JsTrace = [JsEvent]
 -- * Convert Hoed trace information to a @JsTrace@
 
 data JsState = JsState
-    { jsLabels :: JsLabels -- map from nodes to labels
+    { jsIds :: JsIds -- map from nodes to ids
+    , jsLabels :: JsLabels -- map from nodes to labels
     , jsChilds :: JsChildren  -- ordered list of children of a node
     , jsAliases :: JsAliases -- parent aliases, to convert binary functions to n-ary functions
     , jsFuns :: JsFuns
@@ -131,12 +150,13 @@ data JsState = JsState
     }
   deriving (Generic,Show)
   
+type JsIds = IntMap JsId
 type JsLabels = IntMap JsLabel 
 type JsChildren = IntMap [Int]
 type JsAliases = Map Parent Parent
 type JsFuns = IntSet
 
-type JsTraceInfo = IntMap JsId 
+type JsTraceInfo = IntMap Int 
 
 -- | Convert Hoed trace information to a @JsTrace@
 mkJsTrace :: Trace -> TraceInfo -> JsTrace
@@ -146,53 +166,75 @@ mkJsTrace tr ti = reverse $ State.evalState (mkJsTraceSt tr) ini
 initializeJsState :: Trace -> TraceInfo -> JsState
 initializeJsState tr ti = st
     where
-    emptyJsState = JsState IMap.empty IMap.empty Map.empty ISet.empty ISet.empty ISet.empty (mkJsTraceInfo ti) (-1)
+    emptyJsState = JsState IMap.empty IMap.empty IMap.empty Map.empty ISet.empty ISet.empty ISet.empty (mkJsTraceInfo ti) (-1)
     st = GV.ifoldl initializeJsEvent emptyJsState (GV.unsafeTail tr)
     initializeJsEvent :: JsState -> Int -> Event -> JsState
     initializeJsEvent st (succ -> uid) (Event parent change) = case change of
-        Observe s -> addJsLabel uid (T.unpack $ trimText s) st
+        Observe s -> flip State.execState st $ do
+            let jsid = uid --JsFun uid
+            State.modify $ addJsId uid jsid
+            State.modify $ addJsLabel jsid (T.unpack $ trimText s)
         Enter -> st
         Fun -> flip State.execState st $ do
-            isParentFun <- State.gets $ isJsFun (parentUID parent)
+            let jsid = uid --JsFun uid
+            State.modify $ addJsId uid jsid
+            pjsid <- State.gets $ getJsId $ parentUID parent
+            isParentFun <- State.gets $ isJsFun pjsid
             if isParentFun
                 then do
-                    State.modify $ addJsChildrenAliases uid parent
-                    State.modify $ addJsDeadFun uid
-                else State.modify $ addJsFun uid
-            State.modify $ copyJsLabel (parentUID parent) uid
-            State.modify $ addJsChild uid parent
-        Cons n s -> addJsChild uid parent st
-        ConsChar c -> addJsChild uid parent st
+                    State.modify $ addJsChildrenAliases jsid parent
+                    State.modify $ addJsDeadFun jsid
+                else State.modify $ addJsFun jsid
+            pjsid <- State.gets $ getJsId $ parentUID parent
+            State.modify $ copyJsLabel pjsid jsid
+            State.modify $ addJsChild jsid parent
+        Cons cid n s -> flip State.execState st $ do
+            let jsid = maybe uid id cid
+            State.modify $ addJsId uid jsid
+            State.modify $ addJsChild jsid parent
+        ConsChar cid c -> flip State.execState st $ do
+            let jsid = maybe uid id cid
+            State.modify $ addJsId uid jsid
+            State.modify $ addJsChild jsid parent
+
+addJsId :: UID -> JsId -> JsState -> JsState
+addJsId uid jsid st = st { jsIds = IMap.insert (jsNodeId jsid) jsid (jsIds st) }
+
+getJsId :: UID -> JsState -> JsId
+getJsId uid st | uid < 0 = uid
+getJsId uid st = case IMap.lookup uid (jsIds st) of
+    Nothing -> error $ "getJsId " ++ show uid ++ " in \n" ++ show (jsIds st)
+    Just jsid -> jsid
 
 copyJsLabel :: JsId -> JsId -> JsState -> JsState
-copyJsLabel from to st = case IMap.lookup from (jsLabels st) of
+copyJsLabel from to st = case IMap.lookup (jsNodeId from) (jsLabels st) of
     Nothing -> st
-    Just lbl -> st { jsLabels = IMap.insert to lbl $ jsLabels st, jsObserveFuns = ISet.insert from $ jsObserveFuns st }
+    Just lbl -> st { jsLabels = IMap.insert (jsNodeId to) lbl $ jsLabels st, jsObserveFuns = ISet.insert (jsNodeId from) $ jsObserveFuns st }
 
 isJsDeadFun :: JsId -> JsState -> Bool
-isJsDeadFun uid st = ISet.member uid (jsDeadFuns st)
+isJsDeadFun jsid st = ISet.member (jsNodeId jsid) (jsDeadFuns st)
 
 isJsObserveFun :: JsId -> JsState -> Bool
-isJsObserveFun uid st = ISet.member uid (jsObserveFuns st)
+isJsObserveFun jsid st = ISet.member (jsNodeId jsid) (jsObserveFuns st)
 
 addJsDeadFun :: JsId -> JsState -> JsState
-addJsDeadFun uid st = st { jsDeadFuns = ISet.insert uid $ jsDeadFuns st }
+addJsDeadFun jsid st = st { jsDeadFuns = ISet.insert (jsNodeId jsid) $ jsDeadFuns st }
 
 addJsLabel :: JsId -> JsLabel -> JsState -> JsState
-addJsLabel uid lbl st = st { jsLabels = IMap.insert uid lbl $ jsLabels st }
+addJsLabel jsid lbl st = st { jsLabels = IMap.insert (jsNodeId jsid) lbl $ jsLabels st }
 
 isJsFun :: JsId -> JsState -> Bool
-isJsFun uid st = ISet.member uid (jsFuns st)
+isJsFun jsid st = ISet.member (jsNodeId jsid) (jsFuns st)
 
 addJsFun :: JsId -> JsState -> JsState
-addJsFun uid st = st { jsFuns = ISet.insert uid $ jsFuns st }
+addJsFun jsid st = st { jsFuns = ISet.insert (jsNodeId jsid) $ jsFuns st }
 
 addJsChildrenAliases :: JsId -> Parent -> JsState -> JsState
-addJsChildrenAliases uid p@(Parent puid pidx) st =
-    st { jsAliases = Map.insert (Parent uid 1) (Parent puid $ pidx+1) $ Map.insert (Parent uid 0) p $ jsAliases st }
+addJsChildrenAliases jsid p@(Parent puid pidx) st =
+    st { jsAliases = Map.insert (Parent (jsNodeId jsid) 1) (Parent puid $ pidx+1) $ Map.insert (Parent (jsNodeId jsid) 0) p $ jsAliases st }
 
 addJsChild :: JsId -> Parent -> JsState -> JsState
-addJsChild uid p st = st { jsThunk = thunk-fromEnum cpidx, jsChilds = IMap.alter (Just . ins cpidx uid . maybe [] id) cpuid $ jsChilds st }
+addJsChild jsid p st = st { jsThunk = thunk-fromEnum cpidx, jsChilds = IMap.alter (Just . ins cpidx (jsNodeId jsid) . maybe [] id) cpuid $ jsChilds st }
     where
     thunk = jsThunk st
     (Parent cpuid cpidx) = canonicalParent p st
@@ -224,48 +266,61 @@ mkJsTraceSt = GV.ifoldl addJsEventSt (return []) . GV.unsafeTail
         return (maybeToList te ++ tr)
 
 mkJsEventSt :: Int -> Event -> State JsState (Maybe JsEvent)
-mkJsEventSt uid (Event parent change) = case change of
-    Observe s -> do
-        isFun <- State.gets $ isJsObserveFun uid
-        if isFun
-            then return Nothing
-            else do
-                ch <- State.gets $ mkJsChildren uid
-                par <- State.gets $ mkJsParent uid parent
-                lbl <- State.gets $ mkJsLabel uid
-                return $ Just $ jsNew uid ch par lbl
-    Enter -> return Nothing
-    Fun -> do
-        isDeadFun <- State.gets $ isJsDeadFun uid
-        if isDeadFun
-            then return Nothing
-            else do
-                ch <- State.gets $ mkJsChildren uid
-                par <- State.gets $ mkJsParent uid parent
-                lbl <- State.gets $ mkJsLabel uid
-                return $ Just $ jsNew uid ch par lbl
-    Cons _ s -> do
-        ch <- State.gets $ mkJsChildren uid
-        par <- State.gets $ mkJsParent uid parent
-        return $ Just $ jsUpd uid ch par (T.unpack s)
-    ConsChar c -> do
-        ch <- State.gets $ mkJsChildren uid
-        par <- State.gets $ mkJsParent uid parent
-        return $ Just $ jsUpd uid ch par [c]
+mkJsEventSt uid (Event parent change) = do
+    case change of
+        Observe s -> do
+            jsid <- State.gets (getJsId uid)
+            isFun <- State.gets $ isJsObserveFun jsid
+            if isFun
+                then return Nothing
+                else do
+                    ch <- State.gets $ mkJsChildren False jsid
+                    par <- State.gets $ mkJsParent jsid parent
+                    lbl <- State.gets $ mkJsLabel jsid
+                    return $ Just $ jsNew jsid ch par lbl
+        Enter -> return Nothing
+        Fun -> do
+            jsid <- State.gets (getJsId uid)
+            isDeadFun <- State.gets $ isJsDeadFun jsid
+            if isDeadFun
+                then return Nothing
+                else do
+                    ch <- State.gets $ mkJsChildren False jsid
+                    par <- State.gets $ mkJsParent jsid parent
+                    lbl <- State.gets $ mkJsLabel jsid
+                    return $ Just $ jsNew jsid ch par lbl
+        Cons shared _ s -> case shared of
+            Nothing -> do
+                jsid <- State.gets $ getJsId uid
+                ch <- State.gets $ mkJsChildren True jsid
+                par <- State.gets $ mkJsParent jsid parent
+                return $ Just $ jsUpd jsid ch par (T.unpack s)
+            Just _ -> return Nothing
+        ConsChar shared c -> case shared of
+            Nothing -> do
+                jsid <- State.gets $ getJsId uid
+                ch <- State.gets $ mkJsChildren True jsid
+                par <- State.gets $ mkJsParent jsid parent
+                return $ Just $ jsUpd jsid ch par [c]
+            Just _ -> return Nothing
 
-mkJsChildren :: JsId -> JsState -> [JsChild]
-mkJsChildren uid st = maybe [] add $ IMap.lookup uid (jsChilds st)
+mkJsChildren :: Bool -> JsId -> JsState -> [JsChild]
+mkJsChildren isCons jsid st = maybe [] add $ IMap.lookup (jsNodeId jsid) (jsChilds st)
     where
-    add xs = map (uncurry JsChild) $ zip xs $ replicate (length xs-1) JsInput ++ [JsOutput]
+    add xs = map (uncurry JsChild) $ zip (map (flip getJsId st) xs) edges
+        where
+        edges = if isCons
+            then replicate (length xs) JsDataType
+            else replicate (length xs-1) JsInput ++ [JsOutput]
 
 mkJsLabel :: JsId -> JsState -> Maybe JsLabel
-mkJsLabel uid st = IMap.lookup uid (jsLabels st)
+mkJsLabel jsid st = IMap.lookup (jsNodeId jsid) (jsLabels st)
 
 mkJsParent :: JsId -> Parent -> JsState -> Maybe JsParent
-mkJsParent uid (Parent puid (fromEnum -> pidx)) st = case IMap.lookup uid (jsTraceInfo st) of
-    Just puid -> Just $ JsParent puid JsCall
+mkJsParent jsid (Parent puid (fromEnum -> pidx)) st = case IMap.lookup (jsNodeId jsid) (jsTraceInfo st) of
+    Just puid -> Just $ JsParent (getJsId puid st) JsCall
     Nothing -> if puid > 0
-        then Just $ JsParent puid (if pidx == len-1 then JsOutput else JsInput)
+        then Just $ JsParent (getJsId puid st) (if pidx == len-1 then JsOutput else JsInput)
         else Nothing
  where
     len = maybe 0 length $ IMap.lookup puid (jsChilds st)
