@@ -375,7 +375,7 @@ debug' Config{..} q = do
 
 mkDebugName :: String -> String
 mkDebugName n@(c:_)
-  | isAlpha c || c == '_' = n ++ "_debug"
+  | isAlpha c || c == '_' = if last n=='#' then init n ++ "_debug#" else n ++ "_debug"
   | otherwise = n ++ "??"
 mkDebugName [] = error "unreachable: impossible"
 
