@@ -4,7 +4,7 @@
 
 {-# LANGUAGE PackageImports, OverloadedStrings, ScopedTypeVariables #-}
 
--- | Module for building an Hoed-style algorithm debugger using GHCJS.
+-- | Module for building an Hoed-style algorithmic debugger using GHCJS.
 -- The generated Javascript executable loads an Hoed @CompTree@ trace from a binary file named "CompTree" in the same folder.
 module Main where
 

@@ -57,7 +57,7 @@ copyDebugAlgorithmicFiles outpath = do
 debugAlgorithmicFiles :: IO [FilePath]
 debugAlgorithmicFiles = do
     htmldir <- getDataFileName "html"
-    js <- glob (htmldir </> "JSHoed.jsexe/*.js")
+    js <- glob (htmldir </> "JsHoed.jsexe/*.js")
     png <- glob (htmldir </> "img/*.png")
     let ico = htmldir </> "favicon.ico"
     return $ js ++ png ++ [ico]
