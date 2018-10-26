@@ -77,7 +77,7 @@ library
         temporary,
         process,
         Glob,
-        mtl
+        mtl, safe
 
     exposed-modules:
         Debug
