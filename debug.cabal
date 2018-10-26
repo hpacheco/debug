@@ -84,7 +84,6 @@ library
         Debug.Hoed
         Debug.Hoed.Algorithmic
         Debug.Hoed.Graphical
-        Debug.Hoed.GHood
         Debug.DebugTrace
         Debug.Util
         Debug.Variables
