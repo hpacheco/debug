@@ -173,20 +173,22 @@ initializeJsState tr ti = st
     emptyJsState = JsState IMap.empty IMap.empty IMap.empty Map.empty ISet.empty ISet.empty ISet.empty ISet.empty (mkJsTraceInfo ti) (-1)
     st = GV.ifoldl initializeJsEvent emptyJsState (GV.unsafeTail tr)
     initializeJsEvent :: JsState -> Int -> Event -> JsState
-    initializeJsEvent st (succ -> uid) (Event parent change) = {-trace (show uid ++ ":" ++ show change) $-} case change of
+    initializeJsEvent st (succ -> uid) (Event oldparent@(flip canonicalParent st -> parent) change) = {-trace (show uid ++ ":" ++ show change) $ -}case change of
         Observe s -> flip State.execState st $ do
             let jsid = uid --JsFun uid
             State.modify $ addJsId uid jsid
-            State.modify $ addJsLabel jsid (T.unpack $ trimText s)
+            State.modify $ addJsLabel jsid (T.unpack (trimText s))
         Enter -> st
         Fun -> flip State.execState st $ do
             let jsid = uid --JsFun uid
             State.modify $ addJsId uid jsid
             pjsid <- State.gets $ getJsId $ parentUID parent
             isParentFun <- State.gets $ isJsFun pjsid
-            if isParentFun
+            {-trace (show uid ++ ": isParentFun " ++ show isParentFun) $-}
+            if isParentFun && parentPosition oldparent == 1
                 then do
                     State.modify $ addJsChildrenAliases jsid parent
+                    --State.modify $ addJsFun jsid
                     State.modify $ addJsDeadFun jsid
                 else State.modify $ addJsFun jsid
             pjsid <- State.gets $ getJsId $ parentUID parent
@@ -224,7 +226,7 @@ getJsId uid st = case IMap.lookup uid (jsIds st) of
 copyJsLabel :: JsId -> JsId -> JsState -> JsState
 copyJsLabel from to st = case IMap.lookup (jsNodeId from) (jsLabels st) of
     Nothing -> st
-    Just lbl -> st { jsLabels = IMap.insert (jsNodeId to) lbl $ jsLabels st, jsObserveFuns = ISet.insert (jsNodeId from) $ jsObserveFuns st }
+    Just lbl -> st { jsLabels = IMap.insert (jsNodeId to) (lbl) $ jsLabels st, jsObserveFuns = ISet.insert (jsNodeId from) $ jsObserveFuns st }
 
 isJsDeadFun :: JsId -> JsState -> Bool
 isJsDeadFun jsid st = ISet.member (jsNodeId jsid) (jsDeadFuns st)
@@ -245,8 +247,8 @@ addJsFun :: JsId -> JsState -> JsState
 addJsFun jsid st = st { jsFuns = ISet.insert (jsNodeId jsid) $ jsFuns st }
 
 addJsChildrenAliases :: JsId -> Parent -> JsState -> JsState
-addJsChildrenAliases jsid p@(Parent puid pidx) st =
-    st { jsAliases = Map.insert (Parent (jsNodeId jsid) 1) (Parent puid $ pidx+1) $ Map.insert (Parent (jsNodeId jsid) 0) p $ jsAliases st }
+addJsChildrenAliases jsid parent st = case canonicalParent parent st of
+    p@(Parent puid pidx) -> st { jsAliases = Map.insert (Parent (jsNodeId jsid) 1) (Parent puid $ pidx+1) $ Map.insert (Parent (jsNodeId jsid) 0) p $ jsAliases st }
 
 addJsChild :: JsId -> Parent -> JsState -> JsState
 addJsChild jsid p st = st { jsThunk = thunk-fromEnum cpidx, jsChilds = IMap.alter (Just . ins cpidx (jsNodeId jsid) . maybe [] id) cpuid $ jsChilds st }
