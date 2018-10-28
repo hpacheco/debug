@@ -1,6 +1,6 @@
 {-# LANGUAGE ExtendedDefaultRules, FlexibleContexts, TemplateHaskell, ViewPatterns, PartialTypeSignatures #-}
 {-# OPTIONS_GHC -Wno-partial-type-signatures #-}
-module QuickSortHoed(main, mylength) where
+module LengthHoed(main, mylength) where
 import Debug.Hoed.Graphical
 
 debug [d|
@@ -11,4 +11,4 @@ debug [d|
     
    |]
 
-main = debugGraphical $ print $ mylength "haskell"
+main = debugGraphical $ print $ mylength "hs"

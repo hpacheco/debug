@@ -48,6 +48,7 @@ debugGraphicalOutput :: HoedAnalysis -> IO T.Text
 debugGraphicalOutput h = do
     let tr = hoedTrace h
     ti <- traceInfo Silent tr
+    --putStrLn $ show ti
     let jstr = mkJsTrace tr ti
 --    forM jstr $ \e -> putStrLn $ show e
     let jsons = show $ map encode jstr
@@ -171,9 +172,9 @@ initializeJsState :: Trace -> TraceInfo -> JsState
 initializeJsState tr ti = st
     where
     emptyJsState = JsState IMap.empty IMap.empty IMap.empty Map.empty ISet.empty ISet.empty ISet.empty ISet.empty (mkJsTraceInfo ti) (-1)
-    st = GV.ifoldl initializeJsEvent emptyJsState (GV.unsafeTail tr)
+    st = GV.ifoldl' initializeJsEvent emptyJsState (GV.unsafeTail tr)
     initializeJsEvent :: JsState -> Int -> Event -> JsState
-    initializeJsEvent st (succ -> uid) (Event oldparent@(flip canonicalParent st -> parent) change) = {-trace (show uid ++ ":" ++ show change) $ -}case change of
+    initializeJsEvent st (succ -> uid) (Event oldparent@(flip canonicalParent st -> parent) change) = {-trace (show uid ++ ":" ++ show change ++ " " ++ show oldparent) $-} case change of
         Observe s -> flip State.execState st $ do
             let jsid = uid --JsFun uid
             State.modify $ addJsId uid jsid
@@ -193,15 +194,18 @@ initializeJsState tr ti = st
                 else State.modify $ addJsFun jsid
             pjsid <- State.gets $ getJsId $ parentUID parent
             State.modify $ copyJsLabel pjsid jsid
+            State.modify $ mkJsChild jsid 2
             State.modify $ addJsChild jsid parent
         Cons cid n s -> flip State.execState st $ do
             let jsid = maybe uid id cid
             State.modify $ addJsId uid jsid
+            State.modify $ mkJsChild jsid n
             State.modify $ addJsChild jsid parent
             State.modify $ addJsShared uid parent cid
         ConsChar cid c -> flip State.execState st $ do
             let jsid = maybe uid id cid
             State.modify $ addJsId uid jsid
+            State.modify $ mkJsChild jsid 1
             State.modify $ addJsChild jsid parent
             State.modify $ addJsShared uid parent cid
 
@@ -250,6 +254,12 @@ addJsChildrenAliases :: JsId -> Parent -> JsState -> JsState
 addJsChildrenAliases jsid parent st = case canonicalParent parent st of
     p@(Parent puid pidx) -> st { jsAliases = Map.insert (Parent (jsNodeId jsid) 1) (Parent puid $ pidx+1) $ Map.insert (Parent (jsNodeId jsid) 0) p $ jsAliases st }
 
+mkJsChild :: JsId -> Word8 -> JsState -> JsState
+mkJsChild jsid n st = st { jsThunk = thunk-fromEnum n, jsChilds = IMap.insert jsid thunks $ jsChilds st }
+    where
+    thunk = jsThunk st
+    thunks = map (thunk-) $ take (fromEnum n) [0..]
+
 addJsChild :: JsId -> Parent -> JsState -> JsState
 addJsChild jsid p st = st { jsThunk = thunk-fromEnum cpidx, jsChilds = IMap.alter (Just . ins cpidx (jsNodeId jsid) . maybe [] id) cpuid $ jsChilds st }
     where
@@ -274,7 +284,7 @@ mkJsTraceInfo = IMap.foldrWithKey go IMap.empty . dependencies
                   | otherwise = m
     
 mkJsTraceSt :: Trace -> State JsState JsTrace
-mkJsTraceSt = GV.ifoldl addJsEventSt (return []) . GV.unsafeTail
+mkJsTraceSt = GV.ifoldl' addJsEventSt (return []) . GV.unsafeTail
     where
     addJsEventSt :: State JsState JsTrace -> Int -> Event -> State JsState JsTrace
     addJsEventSt mtr (succ -> i) e = do
