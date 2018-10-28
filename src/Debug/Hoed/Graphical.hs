@@ -50,7 +50,7 @@ debugGraphicalOutput h = do
     ti <- traceInfo Silent tr
     --putStrLn $ show ti
     let jstr = mkJsTrace tr ti
---    forM jstr $ \e -> putStrLn $ show e
+    forM jstr $ \e -> putStrLn $ show e
     let jsons = show $ map encode jstr
     let ctx "jsEvents" = T.pack jsons
         ctx n = n
@@ -95,7 +95,7 @@ jsNodeId = id
 
 type JsLabel = String
 
-data JsParent = JsParent { jsParentId :: JsId, jsParentType :: JsEdgeType }
+data JsParent = JsParent { jsParentIdx :: Int, jsParentId :: JsId, jsParentType :: JsEdgeType }
   deriving (Generic,Show)
 
 instance ToJSON JsParent where
@@ -107,7 +107,7 @@ data JsEdgeType = JsInput | JsOutput | JsCall | JsDataType
 instance ToJSON JsEdgeType where
     toEncoding = genericToEncoding defaultOptions
 
-data JsChild = JsChild { jsChildId :: JsId, jsChildType :: JsEdgeType }
+data JsChild = JsChild { jsChildIdx :: Int, jsChildId :: JsId, jsChildType :: JsEdgeType }
   deriving (Generic,Show)
 
 instance ToJSON JsChild where
@@ -174,7 +174,7 @@ initializeJsState tr ti = st
     emptyJsState = JsState IMap.empty IMap.empty IMap.empty Map.empty ISet.empty ISet.empty ISet.empty ISet.empty (mkJsTraceInfo ti) (-1)
     st = GV.ifoldl' initializeJsEvent emptyJsState (GV.unsafeTail tr)
     initializeJsEvent :: JsState -> Int -> Event -> JsState
-    initializeJsEvent st (succ -> uid) (Event oldparent@(flip canonicalParent st -> parent) change) = {-trace (show uid ++ ":" ++ show change ++ " " ++ show oldparent) $-} case change of
+    initializeJsEvent st (succ -> uid) (Event oldparent@(flip canonicalParent st -> parent) change) = trace (show uid ++ ":" ++ show change ++ " " ++ show oldparent) $ case change of
         Observe s -> flip State.execState st $ do
             let jsid = uid --JsFun uid
             State.modify $ addJsId uid jsid
@@ -334,7 +334,7 @@ mkJsEventSt uid (Event parent change) = do
 mkJsChildren :: Bool -> JsId -> JsState -> [JsChild]
 mkJsChildren isCons jsid st = maybe [] add $ IMap.lookup (jsNodeId jsid) (jsChilds st)
     where
-    add xs = map (uncurry JsChild) $ zip (map (flip getJsId st) xs) edges
+    add xs = map (\(idx,cid,cty) -> JsChild idx cid cty) $ zip3 [0..] (map (flip getJsId st) xs) edges
         where
         edges = if isCons
             then replicate (length xs) JsDataType
@@ -345,9 +345,9 @@ mkJsLabel jsid st = IMap.lookup (jsNodeId jsid) (jsLabels st)
 
 mkJsParent :: Bool -> JsId -> Parent -> JsState -> Maybe JsParent
 mkJsParent isCons jsid (Parent puid (fromEnum -> pidx)) st = case IMap.lookup (jsNodeId jsid) (jsTraceInfo st) of
-    Just puid -> Just $ JsParent (getJsId puid st) JsCall
+    Just puid -> Just $ JsParent 0 (getJsId puid st) JsCall
     Nothing -> if puid > 0
-        then Just $ JsParent (getJsId puid st) (if isCons then JsDataType else if pidx == len-1 then JsOutput else JsInput)
+        then Just $ JsParent pidx (getJsId puid st) (if isCons then JsDataType else if pidx == len-1 then JsOutput else JsInput)
         else Nothing
  where
     len = maybe 0 length $ IMap.lookup puid (jsChilds st)

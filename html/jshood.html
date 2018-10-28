@@ -93,7 +93,7 @@
                         nodes.update([node]);
                     }
                     json.jsChildren.forEach(function(child,index) {
-                        var eid = child.jsChildId + "+" + json.jsId;
+                        var eid = child.jsChildId + "+" + json.jsId + "_" + child.jsChildIdx;
                         nodesAdd({id: child.jsChildId, label: "?", fulllabel: "?", shape:'circle', color:lightRed, font: {color:darkRed} });
                         switch (child.jsChildType)
                         {
@@ -112,7 +112,7 @@
                     var jsparent = json.jsParent;
                     if (jsparent)
                     {
-                        var eid = json.jsId + "+" + json.jsParent.jsParentId;
+                        var eid = json.jsId + "+" + json.jsParent.jsParentId + "_" + json.jsParent.jsParentIdx;
                         switch (jsparent.jsParentType)
                         {
                             case "JsCall": 
@@ -183,7 +183,7 @@
                     var jsparent = json.jsParent;
                     if (jsparent)
                     {
-                        var eid = json.jsId + "+" + json.jsParent.jsParentId;
+                        var eid = json.jsId + "+" + json.jsParent.jsParentId + "_" + json.jsParent.jsParentIdx;
                         edges.remove({id: eid});
                     }
                     if (nevent==0 || json.jsParent.jsParentType=="JsCall")
@@ -195,7 +195,7 @@
                         nodes.update([{id: json.jsId, label: "?", fulllabel: "?", shape:'circle', color:lightRed, font: {color:darkRed} }]);
                     }
                     json.jsChildren.forEach(function(child) {
-                        var eid = child.jsChildId + "+" + json.jsId;
+                        var eid = child.jsChildId + "+" + json.jsId + "_" + child.jsChildIdx;
                         switch (child.jsChildType)
                         {
                             case "JsInput": 
@@ -214,7 +214,7 @@
                 case "JsUpd":
                     nodes.update([{id: json.jsId, label: "?", fulllabel: "?", shape:'circle', color:lightRed, font: {color:darkRed} }]);
                     json.jsChildren.forEach(function(child) {
-                        var eid = child.jsChildId + "+" + json.jsId;
+                        var eid = child.jsChildId + "+" + json.jsId + "_" + child.jsParentIdx;
                         switch (child.jsChildType)
                         {
                             case "JsInput": 
