@@ -50,7 +50,7 @@ debugGraphicalOutput h = do
     ti <- traceInfo Silent tr
     --putStrLn $ show ti
     let jstr = mkJsTrace tr ti
-    forM jstr $ \e -> putStrLn $ show e
+--    forM jstr $ \e -> putStrLn $ show e
     let jsons = show $ map encode jstr
     let ctx "jsEvents" = T.pack jsons
         ctx n = n
@@ -174,7 +174,7 @@ initializeJsState tr ti = st
     emptyJsState = JsState IMap.empty IMap.empty IMap.empty Map.empty ISet.empty ISet.empty ISet.empty ISet.empty (mkJsTraceInfo ti) (-1)
     st = GV.ifoldl' initializeJsEvent emptyJsState (GV.unsafeTail tr)
     initializeJsEvent :: JsState -> Int -> Event -> JsState
-    initializeJsEvent st (succ -> uid) (Event oldparent@(flip canonicalParent st -> parent) change) = trace (show uid ++ ":" ++ show change ++ " " ++ show oldparent) $ case change of
+    initializeJsEvent st (succ -> uid) (Event oldparent@(flip canonicalParent st -> parent) change) = {-trace (show uid ++ ":" ++ show change ++ " " ++ show oldparent) $-} case change of
         Observe s -> flip State.execState st $ do
             let jsid = uid --JsFun uid
             State.modify $ addJsId uid jsid
@@ -255,8 +255,9 @@ addJsChildrenAliases jsid parent st = case canonicalParent parent st of
     p@(Parent puid pidx) -> st { jsAliases = Map.insert (Parent (jsNodeId jsid) 1) (Parent puid $ pidx+1) $ Map.insert (Parent (jsNodeId jsid) 0) p $ jsAliases st }
 
 mkJsChild :: JsId -> Word8 -> JsState -> JsState
-mkJsChild jsid n st = st { jsThunk = thunk-fromEnum n, jsChilds = IMap.insert jsid thunks $ jsChilds st }
+mkJsChild jsid n st = st { jsThunk = thunk-fromEnum n, jsChilds = IMap.alter addthunks jsid $ jsChilds st }
     where
+    addthunks = Just . maybe thunks id
     thunk = jsThunk st
     thunks = map (thunk-) $ take (fromEnum n) [0..]
 
@@ -264,7 +265,7 @@ addJsChild :: JsId -> Parent -> JsState -> JsState
 addJsChild jsid p st = st { jsThunk = thunk-fromEnum cpidx, jsChilds = IMap.alter (Just . ins cpidx (jsNodeId jsid) . maybe [] id) cpuid $ jsChilds st }
     where
     thunk = jsThunk st
-    (Parent cpuid cpidx) = canonicalParent p st
+    cp@(Parent cpuid cpidx) = canonicalParent p st
     ins :: Word8 -> Int -> [Int] -> [Int]
     ins 0 v [] = [v]
     ins 0 v (x:xs) = v:xs
