@@ -6,5 +6,5 @@ import qualified Variables
 
 main :: IO ()
 main = do
-    Variables.main
+    --Variables.main
     Hoed.main

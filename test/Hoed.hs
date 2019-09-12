@@ -7,14 +7,15 @@
 {-# LANGUAGE PackageImports #-}
 {-# LANGUAGE PartialTypeSignatures #-}
 {-# LANGUAGE ViewPatterns #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE TemplateHaskell, ScopedTypeVariables #-}
 -- {-# OPTIONS_GHC -dth-dec-file #-} -- turn on to debug TH
 module Hoed(main) where
 
 import Control.Exception.Extra
-import Debug.Hoed
+import "debug" Debug.Hoed
 import Control.Monad
 import Data.Aeson
+import "Hoed" Debug.Hoed as Hoed
 import qualified Data.ByteString.Lazy as B
 import Util
 
@@ -46,21 +47,24 @@ debug [d|
 
 main :: IO ()
 main = do
-    trace <- getDebugTrace defaultHoedOptions $ do
-#if __GLASGOW_HASKELL__ >= 802
-      print (quicksort (<) "haskell")
-#endif
-      print (listmap (3::Int))
-      print (listcomp (3::Int))
-    -- see https://github.com/feuerbach/ansi-terminal/issues/47 as this test fails on Appveyor
-    -- can remove once ansi-terminal-0.8 is available in Stackage LTS (which will be v11)
-    try_ $ debugPrintTrace trace
-    B.writeFile "hoed.json" $ encode trace
-#if __GLASGOW_HASKELL__ >= 802
-    Just refTrace <- decode <$> B.readFile "test/ref/hoed.json"
-#else
-    Just refTrace <- decode <$> B.readFile "test/ref/hoed80.json"
-#endif
-    unless (equivalentTrace trace refTrace) $
-      error "Trace does not match the reference value"
-    print (foo ['c'])
+    let (xs::[Int]) = [1,2]
+    trace <- Hoed.debugO (Prelude.print $ quicksort (>) xs)
+    putStrLn $ show trace
+--     trace <- getDebugTrace defaultHoedOptions $ do
+-- #if __GLASGOW_HASKELL__ >= 802
+--       print (quicksort (<) "haskell")
+-- #endif
+--       print (listmap (3::Int))
+--       print (listcomp (3::Int))
+--     -- see https://github.com/feuerbach/ansi-terminal/issues/47 as this test fails on Appveyor
+--     -- can remove once ansi-terminal-0.8 is available in Stackage LTS (which will be v11)
+--     try_ $ debugPrintTrace trace
+--     B.writeFile "hoed.json" $ encode trace
+-- #if __GLASGOW_HASKELL__ >= 802
+--     Just refTrace <- decode <$> B.readFile "test/ref/hoed.json"
+-- #else
+--     Just refTrace <- decode <$> B.readFile "test/ref/hoed80.json"
+-- #endif
+--     unless (equivalentTrace trace refTrace) $
+--       error "Trace does not match the reference value"
+--     print (foo ['c'])

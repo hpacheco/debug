@@ -67,10 +67,10 @@ module Debug.Hoed
   , debugViewTrace
   , debugSaveTrace
     -- * Reexported from Hoed
-  , Observable(..)
-  , observe
-  , HoedOptions(..)
-  , defaultHoedOptions
+  --, Observable(..)
+  --, observe
+  --, HoedOptions(..)
+  --, defaultHoedOptions
   ) where
 
 import           Control.Monad
